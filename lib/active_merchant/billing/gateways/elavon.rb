@@ -46,10 +46,13 @@ module ActiveMerchant #:nodoc:
         :credit => 'CCCREDIT',
         :refund => 'CCRETURN',
         :authorize => 'CCAUTHONLY',
+        :authorize_exis_crd => 'CCAUTHONLY',
         :capture => 'CCFORCE',
         :void => 'CCDELETE',
         :store => 'CCGETTOKEN',
         :update => 'CCUPDATETOKEN',
+        :retrieve => 'CCQUERYTOKEN',
+        :complete => 'CCCOMPLETE'
       }
 
       # Initialize the Gateway
@@ -66,6 +69,22 @@ module ActiveMerchant #:nodoc:
       def initialize(options = {})
         requires!(options, :login, :password)
         super
+      end
+      
+      # Get credit card information 
+      def retrieve(token, options = {})
+        form = {}
+        form[:token] = token
+        add_test_mode(form, options)
+        commit(:retrieve, nil, form)
+      end
+      
+      # Places an approved Auth Only transaction into the open batch for settlement.
+      def complete(txn_token, options = {})
+        form = {}
+        form[:txn_id] = txn_token
+        add_test_mode(form, options)
+        commit(:complete, nil, form)
       end
 
       # Make a purchase
@@ -100,6 +119,14 @@ module ActiveMerchant #:nodoc:
         add_customer_data(form, options)
         add_test_mode(form, options)
         commit(:authorize, money, form)
+      end
+
+      # Authorize a credit card for a given amount using existing card token 
+      def authorize_existing_card(money, token, options = {})
+        form = {}
+        form[:token] = token
+        add_test_mode(form, options)
+         commit(:authorize_exis_crd, money, form)
       end
 
       # Capture authorized funds from a credit card.
