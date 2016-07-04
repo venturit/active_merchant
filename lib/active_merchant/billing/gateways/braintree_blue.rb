@@ -65,6 +65,23 @@ module ActiveMerchant #:nodoc:
 
         @braintree_gateway = Braintree::Gateway.new( @configuration )
       end
+      
+      def retrieve(token)
+        commit do
+          begin
+            result = @braintree_gateway.credit_card.find(token)
+            ActiveMerchant::Billing::Response.new(true, "CreditCard found", {exists: true,
+                card_number: result.masked_number,
+                card_holder_name: result.cardholder_name,
+                card_type: result.card_type,
+                expiration_year: result.expiration_year,
+                expiration_month: result.expiration_month
+            })
+          rescue Braintree::NotFoundError
+            ActiveMerchant::Billing::Response.new(false, "CreditCard not found", {exists: false})
+          end
+        end
+      end
 
       def authorize(money, credit_card_or_vault_id, options = {})
         create_transaction(:sale, money, credit_card_or_vault_id, options)
@@ -137,7 +154,7 @@ module ActiveMerchant #:nodoc:
           credit_card_params = merge_credit_card_options({
             :credit_card => {
               :cardholder_name => creditcard.name,
-              :number => creditcard.number,
+              # :number => creditcard.number,
               :cvv => creditcard.verification_value,
               :expiration_month => creditcard.month.to_s.rjust(2, "0"),
               :expiration_year => creditcard.year.to_s
@@ -495,6 +512,9 @@ module ActiveMerchant #:nodoc:
         }
 
         {
+          "id"                      => transaction.id,
+          "created_at"              => transaction.created_at,
+          "amount"                  => transaction.amount,
           "order_id"                => transaction.order_id,
           "status"                  => transaction.status,
           "credit_card_details"     => credit_card_details,
@@ -504,6 +524,7 @@ module ActiveMerchant #:nodoc:
           "vault_customer"          => vault_customer,
           "merchant_account_id"     => transaction.merchant_account_id,
           "processor_response_code" => response_code_from_result(result)
+          
         }
       end
 
